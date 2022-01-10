@@ -5,29 +5,55 @@ let $base64Response = D.getElementById('id_entry_base64Response');
 let $result = D.getElementById('id_result');
 
 let _privateKey;
+let _publicKey;
 
-async function DecryptMessage()
+async function GetAndDecryptMessage()
+{
+    await DecryptMessage($base64Response.value);
+}
+async function DecryptMessage(base64Message)
 {
     try
     {
         let base64Message = $base64Response.value;
-        let arrayBuff =  base64ToArrayBuffer(base64Message)
+        let arrayBuff =  base64ToArrayBuffer(base64Message);
 
         let decrypted = await window.crypto.subtle.decrypt(
             {
-                name: "RSA-OAEP",
+                name: "RSA-OAEP"
             },
             _privateKey,
             arrayBuff
         );
-        console.log(decrypted);
-        $result.textContent = decrypted;
+        let decryptedPlainText = arrayBufferToString(decrypted); 
+        console.log(decryptedPlainText);
+        $result.textContent = decryptedPlainText;
     }catch(err)
     {
         console.log(err);
         $result.textContent = err;
     }
+}
 
+async function EncryptMessage(plainText)
+{
+    try
+    {
+        let enc = new TextEncoder();
+        let encrypted = await window.crypto.subtle.encrypt(
+            {
+                name: "RSA-OAEP"
+            },
+            _publicKey,
+            enc.encode(plainText)
+        );
+        b64EncMessage = arrayBufferToBase64(encrypted);
+        console.log(b64EncMessage);
+        return b64EncMessage;
+    }catch(err)
+    {
+        console.log(err);
+    }
 }
 
 async function GenerateKeys()
@@ -37,12 +63,13 @@ async function GenerateKeys()
             name: "RSA-OAEP",
             modulusLength: 2048,
             publicExponent: new Uint8Array([1, 0, 1]),
-            hash: "SHA-256"
+            hash: "SHA-1"
         },
         true,
         ["encrypt", "decrypt"]
     );
     _privateKey = keyPair.privateKey;
+    _publicKey = keyPair.publicKey;
     /* now when the key pair is generated we are going
        to export them from the keypair
     */
@@ -102,14 +129,18 @@ function toPem(privateKey) {
 }
 
 function arrayBufferToBase64(arrayBuffer) {
+
+    var b64 = window.btoa(arrayBufferToString(arrayBuffer));
+    return b64;
+}
+function arrayBufferToString(arrayBuffer)
+{
     var byteArray = new Uint8Array(arrayBuffer);
     var byteString = '';
     for(var i=0; i < byteArray.byteLength; i++) {
         byteString += String.fromCharCode(byteArray[i]);
     }
-    var b64 = window.btoa(byteString);
-
-    return b64;
+    return byteString;
 }
 
 function base64ToArrayBuffer(base64) {
